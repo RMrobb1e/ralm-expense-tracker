@@ -6,6 +6,7 @@ import {
   LATEST_DATABASE_VERSION,
 } from "@/db/schema";
 import type { DatabaseColumnInfo, DatabaseSnapshot } from "@/db/types";
+import type { CreateEventInput, EventItem } from "@/features/events/types/event.types";
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 
@@ -15,6 +16,15 @@ type UserVersionRow = {
 
 type NameRow = {
   name: string;
+};
+
+type EventRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  start_date: string;
+  end_date: string | null;
+  created_at: string;
 };
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
@@ -152,4 +162,34 @@ export async function logDatabaseSnapshot(): Promise<void> {
   console.log("[db] user_version:", snapshot.userVersion);
   console.log("[db] tables:", snapshot.tables);
   console.log("[db] schema:", JSON.stringify(snapshot.details, null, 2));
+}
+
+export async function listEvents(): Promise<EventItem[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<EventRow>(
+    "SELECT id, name, description, start_date, end_date, created_at FROM events ORDER BY start_date DESC;"
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function createEvent(input: CreateEventInput): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  const id = `evt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startDate = input.startDate ?? now;
+  const endDate = input.endDate ?? null;
+  const description = input.description ?? null;
+
+  await db.runAsync(
+    `INSERT INTO events (id, name, description, start_date, end_date, created_at)
+     VALUES (?, ?, ?, ?, ?, ?);`,
+    [id, input.name, description, startDate, endDate, now]
+  );
 }
