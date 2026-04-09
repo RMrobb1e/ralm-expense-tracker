@@ -19,7 +19,7 @@ describe("calculateSettlement", () => {
 
   it("should handle a simple equal split among all users", () => {
     const expenses: SettlementExpense[] = [
-      { id: "1", payerId: "A", amount: 120 }, // Default splits among A, B, C, D ($30 each)
+      { id: "1", payerId: "A", amount: 120 }, // Default splits among A, B, C, D (₱30 each)
     ];
 
     const result = calculateSettlement(expenses, users);
@@ -40,8 +40,8 @@ describe("calculateSettlement", () => {
     );
   });
 
-  it("should handle indivisible decimals (e.g., $10 split 3 ways)", () => {
-    // $10 / 3 = 3.3333...
+  it("should handle indivisible decimals (e.g., ₱10 split 3 ways)", () => {
+    // ₱10 / 3 = 3.3333...
     // To avoid creating or destroying money, 1 cent must be given to someone.
     // The algorithm distributes the remainder to the first participant in the array.
     const expenses: SettlementExpense[] = [
@@ -59,7 +59,7 @@ describe("calculateSettlement", () => {
       ]),
     );
 
-    // Since A paid $10 and their share is $3.34, they are owed $6.66 exactly.
+    // Since A paid ₱10 and their share is ₱3.34, they are owed ₱6.66 exactly.
     const totalOwedToA = result.simplified
       .filter((t) => t.to === "A")
       .reduce((sum, t) => sum + t.amount, 0);
@@ -69,8 +69,8 @@ describe("calculateSettlement", () => {
 
   it("should handle complex overlapping decimals and minimize transactions", () => {
     const expenses: SettlementExpense[] = [
-      { id: "1", payerId: "A", amount: 33.33, splitAmong: ["A", "B", "C"] }, // $11.11 each
-      { id: "2", payerId: "B", amount: 10.0, splitAmong: ["A", "B"] }, // $5.00 each
+      { id: "1", payerId: "A", amount: 33.33, splitAmong: ["A", "B", "C"] }, // ₱11.11 each
+      { id: "2", payerId: "B", amount: 10.0, splitAmong: ["A", "B"] }, // ₱5.00 each
     ];
 
     const result = calculateSettlement(expenses, users);
@@ -93,7 +93,7 @@ describe("calculateSettlement", () => {
 
   it("should handle a payer paying for someone else entirely (payer not in split)", () => {
     const expenses: SettlementExpense[] = [
-      { id: "1", payerId: "A", amount: 50, splitAmong: ["B", "C"] }, // $25 each for B and C
+      { id: "1", payerId: "A", amount: 50, splitAmong: ["B", "C"] }, // ₱25 each for B and C
     ];
 
     const result = calculateSettlement(expenses, users);
