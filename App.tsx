@@ -3,13 +3,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "./global.css";
 
-import { HomeScreen } from "@/app/screens/home-screen";
+import { RootNavigator } from "@/app/navigation/root-navigator";
 
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <HomeScreen />
+        <RootNavigator />
         <StatusBar style="dark" />
       </SafeAreaProvider>
     </GestureHandlerRootView>

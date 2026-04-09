@@ -7,11 +7,12 @@ import type { EventItem } from "@/features/events/types/event.types";
 
 type EventListProps = {
   events: EventItem[];
+  onOpenEvent: (event: EventItem) => void;
   onEdit: (event: EventItem) => void;
   onDelete: (event: EventItem) => void;
 };
 
-export function EventList({ events, onEdit, onDelete }: EventListProps) {
+export function EventList({ events, onOpenEvent, onEdit, onDelete }: EventListProps) {
   const swipeableRefs = useRef<Record<string, Swipeable | null>>({});
 
   const closeRow = (eventId: string) => {
@@ -30,7 +31,7 @@ export function EventList({ events, onEdit, onDelete }: EventListProps) {
     <FlatList
       data={events}
       keyExtractor={(item) => item.id}
-      contentContainerClassName="gap-3 pb-24"
+      contentContainerStyle={{ gap: 12, paddingBottom: 96 }}
       renderItem={({ item }) => (
         <Swipeable
           ref={(ref) => {
@@ -60,13 +61,17 @@ export function EventList({ events, onEdit, onDelete }: EventListProps) {
             </View>
           )}
         >
-          <View className="rounded-xl border border-zinc-200 bg-white p-4">
+          <Pressable
+            onPress={() => onOpenEvent(item)}
+            className="rounded-xl border border-zinc-200 bg-white p-4"
+            style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+          >
             <Text className="text-lg font-semibold text-zinc-900">{item.name}</Text>
             {item.description ? <Text className="mt-1 text-zinc-600">{item.description}</Text> : null}
             <Text className="mt-2 text-xs text-zinc-500">
               Start: {new Date(item.startDate).toLocaleDateString()}
             </Text>
-          </View>
+          </Pressable>
         </Swipeable>
       )}
     />

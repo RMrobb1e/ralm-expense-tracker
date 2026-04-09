@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import type { RootStackParamList } from "@/app/navigation/types";
 
 import { useDatabase } from "@/db/hooks/use-database";
 import { CreateEventModal } from "@/features/events/components/create-event-modal";
@@ -9,6 +13,7 @@ import { useEvents } from "@/features/events/hooks/use-events";
 import type { CreateEventInput, EventItem } from "@/features/events/types/event.types";
 
 export function HomeScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, "Home">>();
   const { error, isInitializing, isReady } = useDatabase();
   const { events, error: eventsError, isLoading, addEvent, editEvent, removeEvent } = useEvents(
     isReady && !error
@@ -61,12 +66,8 @@ export function HomeScreen() {
   };
 
   return (
-    <SafeAreaView
-      edges={["top", "left", "right"]}
-      style={{ flex: 1, backgroundColor: "#fafafa" }}
-      className="flex-1 bg-zinc-50"
-    >
-      <View style={{ flex: 1, padding: 20 }} className="flex-1 p-5">
+    <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: "#fafafa" }}>
+      <View style={{ flex: 1, padding: 20 }}>
         <Text className="text-2xl font-bold text-zinc-900">Expense Tracker</Text>
         <Text className="mt-1 text-zinc-600">Your events are stored in SQLite</Text>
 
@@ -94,7 +95,12 @@ export function HomeScreen() {
           {isLoading ? (
             <Text className="text-zinc-500">Loading events...</Text>
           ) : (
-            <EventList events={events} onEdit={openEditModal} onDelete={handleDeleteEvent} />
+            <EventList
+              events={events}
+              onOpenEvent={(event) => navigation.navigate("EventDetail", { eventId: event.id })}
+              onEdit={openEditModal}
+              onDelete={handleDeleteEvent}
+            />
           )}
         </View>
 

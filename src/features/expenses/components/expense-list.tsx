@@ -11,7 +11,7 @@ export function ExpenseList({ expenses }: ExpenseListProps) {
     <FlatList
       data={expenses}
       keyExtractor={(item) => item.id}
-      contentContainerClassName="gap-3"
+      contentContainerStyle={{ gap: 12 }}
       renderItem={({ item }) => (
         <View className="rounded-xl border border-zinc-200 bg-white p-4">
           <Text className="text-base font-semibold text-zinc-900">{item.title}</Text>
