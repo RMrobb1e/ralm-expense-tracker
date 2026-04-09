@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { createEvent, listEvents } from "@/db/client";
-import type { CreateEventInput, EventItem } from "@/features/events/types/event.types";
+import { createEvent, deleteEvent, listEvents, updateEvent } from "@/db/client";
+import type {
+  CreateEventInput,
+  EventItem,
+  UpdateEventInput,
+} from "@/features/events/types/event.types";
 
 type UseEventsResult = {
   events: EventItem[];
@@ -9,6 +13,8 @@ type UseEventsResult = {
   error: string | null;
   refresh: () => Promise<void>;
   addEvent: (input: CreateEventInput) => Promise<void>;
+  editEvent: (input: UpdateEventInput) => Promise<void>;
+  removeEvent: (eventId: string) => Promise<void>;
 };
 
 export function useEvents(enabled: boolean): UseEventsResult {
@@ -34,6 +40,22 @@ export function useEvents(enabled: boolean): UseEventsResult {
     await refresh();
   }, [refresh]);
 
+  const editEvent = useCallback(
+    async (input: UpdateEventInput) => {
+      await updateEvent(input);
+      await refresh();
+    },
+    [refresh]
+  );
+
+  const removeEvent = useCallback(
+    async (eventId: string) => {
+      await deleteEvent(eventId);
+      await refresh();
+    },
+    [refresh]
+  );
+
   useEffect(() => {
     if (!enabled) return;
     void refresh();
@@ -45,5 +67,7 @@ export function useEvents(enabled: boolean): UseEventsResult {
     error,
     refresh,
     addEvent,
+    editEvent,
+    removeEvent,
   };
 }

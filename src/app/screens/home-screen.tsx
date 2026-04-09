@@ -1,25 +1,63 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useDatabase } from "@/db/hooks/use-database";
 import { CreateEventModal } from "@/features/events/components/create-event-modal";
 import { EventList } from "@/features/events/components/event-list";
 import { useEvents } from "@/features/events/hooks/use-events";
+import type { CreateEventInput, EventItem } from "@/features/events/types/event.types";
 
 export function HomeScreen() {
   const { error, isInitializing, isReady } = useDatabase();
-  const { events, error: eventsError, isLoading, addEvent } = useEvents(isReady && !error);
+  const { events, error: eventsError, isLoading, addEvent, editEvent, removeEvent } = useEvents(
+    isReady && !error
+  );
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSavingEvent, setIsSavingEvent] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
 
-  const handleCreateEvent = async (input: { name: string; description?: string }) => {
+  const openCreateModal = () => {
+    setModalMode("create");
+    setSelectedEvent(null);
+    setIsModalVisible(true);
+  };
+
+  const openEditModal = (event: EventItem) => {
+    setModalMode("edit");
+    setSelectedEvent(event);
+    setIsModalVisible(true);
+  };
+
+  const handleSubmitEvent = async (input: CreateEventInput) => {
     setIsSavingEvent(true);
     try {
+      if (modalMode === "edit" && selectedEvent) {
+        await editEvent({
+          id: selectedEvent.id,
+          ...input,
+          name: input.name,
+        });
+        return;
+      }
       await addEvent(input);
     } finally {
       setIsSavingEvent(false);
     }
+  };
+
+  const handleDeleteEvent = (event: EventItem) => {
+    Alert.alert("Delete event", `Delete "${event.name}"?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          void removeEvent(event.id);
+        },
+      },
+    ]);
   };
 
   return (
@@ -53,11 +91,15 @@ export function HomeScreen() {
         {eventsError ? <Text className="mt-3 text-red-700">Events error: {eventsError}</Text> : null}
 
         <View className="mt-4 flex-1">
-          {isLoading ? <Text className="text-zinc-500">Loading events...</Text> : <EventList events={events} />}
+          {isLoading ? (
+            <Text className="text-zinc-500">Loading events...</Text>
+          ) : (
+            <EventList events={events} onEdit={openEditModal} onDelete={handleDeleteEvent} />
+          )}
         </View>
 
         <Pressable
-          onPress={() => setIsModalVisible(true)}
+          onPress={openCreateModal}
           className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-zinc-900"
         >
           <Text className="text-3xl leading-none text-white">+</Text>
@@ -67,8 +109,10 @@ export function HomeScreen() {
       <CreateEventModal
         visible={isModalVisible}
         isSaving={isSavingEvent}
+        mode={modalMode}
+        initialEvent={selectedEvent}
         onClose={() => setIsModalVisible(false)}
-        onSubmit={handleCreateEvent}
+        onSubmit={handleSubmitEvent}
       />
     </SafeAreaView>
   );

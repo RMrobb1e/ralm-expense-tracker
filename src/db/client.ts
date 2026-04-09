@@ -6,7 +6,7 @@ import {
   LATEST_DATABASE_VERSION,
 } from "@/db/schema";
 import type { DatabaseColumnInfo, DatabaseSnapshot } from "@/db/types";
-import type { CreateEventInput, EventItem } from "@/features/events/types/event.types";
+import type { CreateEventInput, EventItem, UpdateEventInput } from "@/features/events/types/event.types";
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 
@@ -192,4 +192,23 @@ export async function createEvent(input: CreateEventInput): Promise<void> {
      VALUES (?, ?, ?, ?, ?, ?);`,
     [id, input.name, description, startDate, endDate, now]
   );
+}
+
+export async function updateEvent(input: UpdateEventInput): Promise<void> {
+  const db = await getDatabase();
+  const description = input.description ?? null;
+  const startDate = input.startDate ?? new Date().toISOString();
+  const endDate = input.endDate ?? null;
+
+  await db.runAsync(
+    `UPDATE events
+     SET name = ?, description = ?, start_date = ?, end_date = ?
+     WHERE id = ?;`,
+    [input.name, description, startDate, endDate, input.id]
+  );
+}
+
+export async function deleteEvent(eventId: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync("DELETE FROM events WHERE id = ?;", [eventId]);
 }

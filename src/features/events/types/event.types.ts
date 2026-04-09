@@ -13,3 +13,11 @@ export type CreateEventInput = {
   startDate?: string;
   endDate?: string;
 };
+
+export type UpdateEventInput = {
+  id: string;
+  name: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+};

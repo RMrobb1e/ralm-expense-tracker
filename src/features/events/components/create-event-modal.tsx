@@ -1,19 +1,35 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal, Pressable, Text, TextInput, View } from "react-native";
 
-import type { CreateEventInput } from "@/features/events/types/event.types";
+import type { CreateEventInput, EventItem } from "@/features/events/types/event.types";
 
 type CreateEventModalProps = {
   visible: boolean;
   isSaving: boolean;
+  mode: "create" | "edit";
+  initialEvent?: EventItem | null;
   onClose: () => void;
   onSubmit: (input: CreateEventInput) => Promise<void>;
 };
 
-export function CreateEventModal({ visible, isSaving, onClose, onSubmit }: CreateEventModalProps) {
+export function CreateEventModal({
+  visible,
+  isSaving,
+  mode,
+  initialEvent,
+  onClose,
+  onSubmit,
+}: CreateEventModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    setError(null);
+    setName(initialEvent?.name ?? "");
+    setDescription(initialEvent?.description ?? "");
+  }, [initialEvent, visible]);
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -35,7 +51,9 @@ export function CreateEventModal({ visible, isSaving, onClose, onSubmit }: Creat
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 justify-end bg-black/40 p-4">
         <View className="rounded-2xl bg-white p-5">
-          <Text className="text-xl font-semibold text-zinc-900">Create Event</Text>
+          <Text className="text-xl font-semibold text-zinc-900">
+            {mode === "edit" ? "Edit Event" : "Create Event"}
+          </Text>
 
           <TextInput
             value={name}
@@ -62,7 +80,9 @@ export function CreateEventModal({ visible, isSaving, onClose, onSubmit }: Creat
               disabled={isSaving}
               className="rounded-lg bg-zinc-900 px-4 py-2"
             >
-              <Text className="font-semibold text-white">{isSaving ? "Saving..." : "Create"}</Text>
+              <Text className="font-semibold text-white">
+                {isSaving ? "Saving..." : mode === "edit" ? "Save" : "Create"}
+              </Text>
             </Pressable>
           </View>
         </View>
