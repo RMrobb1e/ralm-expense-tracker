@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "@/app/navigation/types";
 import { EventDetailScreen } from "@/app/screens/event-detail-screen";
 import { HomeScreen } from "@/app/screens/home-screen";
+import { SettlementScreen } from "@/app/screens/settlement-screen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -18,8 +19,21 @@ export function RootNavigator() {
           headerTitleStyle: { fontWeight: "600" },
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: "Events" }} />
-        <Stack.Screen name="EventDetail" component={EventDetailScreen} options={{ title: "Event" }} />
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ title: "Events" }}
+        />
+        <Stack.Screen
+          name="EventDetail"
+          component={EventDetailScreen}
+          options={{ title: "Event" }}
+        />
+        <Stack.Screen
+          name="Settlement"
+          component={SettlementScreen}
+          options={{ title: "Settlement" }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

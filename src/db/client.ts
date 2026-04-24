@@ -6,11 +6,16 @@ import {
   LATEST_DATABASE_VERSION,
 } from "@/db/schema";
 import type { DatabaseColumnInfo, DatabaseSnapshot } from "@/db/types";
+import type { Participant } from "@/db/types";
 import type {
   AddExpenseFormInput,
   EventExpenseListItem,
 } from "@/features/expenses/types/event-expense.types";
-import type { CreateEventInput, EventItem, UpdateEventInput } from "@/features/events/types/event.types";
+import type {
+  CreateEventInput,
+  EventItem,
+  UpdateEventInput,
+} from "@/features/events/types/event.types";
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 
@@ -65,7 +70,7 @@ async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
 
   if (currentVersion > LATEST_DATABASE_VERSION) {
     console.warn(
-      `[db] Database version ${currentVersion} is newer than supported version ${LATEST_DATABASE_VERSION}.`
+      `[db] Database version ${currentVersion} is newer than supported version ${LATEST_DATABASE_VERSION}.`,
     );
   }
 }
@@ -75,12 +80,19 @@ async function getUserVersion(db: SQLite.SQLiteDatabase): Promise<number> {
   return result?.user_version ?? 0;
 }
 
-async function setUserVersion(db: SQLite.SQLiteDatabase, version: number): Promise<void> {
+async function setUserVersion(
+  db: SQLite.SQLiteDatabase,
+  version: number,
+): Promise<void> {
   await db.execAsync(`PRAGMA user_version = ${version};`);
 }
 
-async function migrateLegacyExpensesSchema(db: SQLite.SQLiteDatabase): Promise<void> {
-  const columns = await db.getAllAsync<DatabaseColumnInfo>("PRAGMA table_info(expenses);");
+async function migrateLegacyExpensesSchema(
+  db: SQLite.SQLiteDatabase,
+): Promise<void> {
+  const columns = await db.getAllAsync<DatabaseColumnInfo>(
+    "PRAGMA table_info(expenses);",
+  );
   if (!columns.length) return;
 
   const hasEventIdColumn = columns.some((column) => column.name === "event_id");
@@ -144,14 +156,16 @@ export async function getDatabaseSnapshot(): Promise<DatabaseSnapshot> {
   const db = await getDatabase();
   const userVersion = await getUserVersion(db);
   const tablesRows = await db.getAllAsync<NameRow>(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name;"
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name;",
   );
   const tables = tablesRows.map((row) => row.name);
   const details = await Promise.all(
     tables.map(async (table) => {
-      const columns = await db.getAllAsync<DatabaseColumnInfo>(`PRAGMA table_info(${table});`);
+      const columns = await db.getAllAsync<DatabaseColumnInfo>(
+        `PRAGMA table_info(${table});`,
+      );
       return { table, columns };
-    })
+    }),
   );
 
   return {
@@ -171,7 +185,7 @@ export async function logDatabaseSnapshot(): Promise<void> {
 export async function listEvents(): Promise<EventItem[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<EventRow>(
-    "SELECT id, name, description, start_date, end_date, created_at FROM events ORDER BY start_date DESC;"
+    "SELECT id, name, description, start_date, end_date, created_at FROM events ORDER BY start_date DESC;",
   );
   return rows.map((row) => ({
     id: row.id,
@@ -194,7 +208,7 @@ export async function createEvent(input: CreateEventInput): Promise<void> {
   await db.runAsync(
     `INSERT INTO events (id, name, description, start_date, end_date, created_at)
      VALUES (?, ?, ?, ?, ?, ?);`,
-    [id, input.name, description, startDate, endDate, now]
+    [id, input.name, description, startDate, endDate, now],
   );
 }
 
@@ -208,7 +222,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<void> {
     `UPDATE events
      SET name = ?, description = ?, start_date = ?, end_date = ?
      WHERE id = ?;`,
-    [input.name, description, startDate, endDate, input.id]
+    [input.name, description, startDate, endDate, input.id],
   );
 }
 
@@ -221,7 +235,7 @@ export async function getEventById(eventId: string): Promise<EventItem | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<EventRow>(
     "SELECT id, name, description, start_date, end_date, created_at FROM events WHERE id = ? LIMIT 1;",
-    [eventId]
+    [eventId],
   );
   if (!row) return null;
   return {
@@ -243,7 +257,9 @@ type ExpenseJoinRow = {
   payer_name: string | null;
 };
 
-export async function listExpensesForEvent(eventId: string): Promise<EventExpenseListItem[]> {
+export async function listExpensesForEvent(
+  eventId: string,
+): Promise<EventExpenseListItem[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<ExpenseJoinRow>(
     `SELECT e.id, e.title, e.amount, e.currency, e.incurred_at, p.name AS payer_name
@@ -251,7 +267,7 @@ export async function listExpensesForEvent(eventId: string): Promise<EventExpens
      LEFT JOIN participants p ON p.id = e.participant_id
      WHERE e.event_id = ?
      ORDER BY e.incurred_at DESC;`,
-    [eventId]
+    [eventId],
   );
   return rows.map((row) => ({
     id: row.id,
@@ -263,7 +279,35 @@ export async function listExpensesForEvent(eventId: string): Promise<EventExpens
   }));
 }
 
-async function findOrCreateParticipantForEvent(eventId: string, payerName: string): Promise<string> {
+type ParticipantRow = {
+  id: string;
+  event_id: string;
+  name: string;
+  email: string | null;
+  created_at: string;
+};
+
+export async function listParticipantsForEvent(
+  eventId: string,
+): Promise<Participant[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<ParticipantRow>(
+    "SELECT id, event_id, name, email, created_at FROM participants WHERE event_id = ? ORDER BY name ASC;",
+    [eventId],
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    eventId: row.event_id,
+    name: row.name,
+    email: row.email,
+    createdAt: row.created_at,
+  }));
+}
+
+async function findOrCreateParticipantForEvent(
+  eventId: string,
+  payerName: string,
+): Promise<string> {
   const db = await getDatabase();
   const trimmed = payerName.trim();
   const normalized = trimmed.toLowerCase();
@@ -272,7 +316,7 @@ async function findOrCreateParticipantForEvent(eventId: string, payerName: strin
     `SELECT id FROM participants
      WHERE event_id = ? AND LOWER(TRIM(name)) = ?
      LIMIT 1;`,
-    [eventId, normalized]
+    [eventId, normalized],
   );
   if (existing) return existing.id;
 
@@ -281,14 +325,19 @@ async function findOrCreateParticipantForEvent(eventId: string, payerName: strin
   await db.runAsync(
     `INSERT INTO participants (id, event_id, name, email, created_at)
      VALUES (?, ?, ?, NULL, ?);`,
-    [id, eventId, trimmed, now]
+    [id, eventId, trimmed, now],
   );
   return id;
 }
 
-export async function addExpenseToEvent(input: AddExpenseFormInput & { eventId: string }): Promise<void> {
+export async function addExpenseToEvent(
+  input: AddExpenseFormInput & { eventId: string },
+): Promise<void> {
   const db = await getDatabase();
-  const participantId = await findOrCreateParticipantForEvent(input.eventId, input.payerName);
+  const participantId = await findOrCreateParticipantForEvent(
+    input.eventId,
+    input.payerName,
+  );
   const now = new Date().toISOString();
   const expenseId = `exp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const title = input.description.trim() || "Expense";
@@ -296,6 +345,6 @@ export async function addExpenseToEvent(input: AddExpenseFormInput & { eventId: 
   await db.runAsync(
     `INSERT INTO expenses (id, event_id, participant_id, title, amount, currency, incurred_at, notes, created_at)
      VALUES (?, ?, ?, ?, ?, 'USD', ?, NULL, ?);`,
-    [expenseId, input.eventId, participantId, title, input.amount, now, now]
+    [expenseId, input.eventId, participantId, title, input.amount, now, now],
   );
 }

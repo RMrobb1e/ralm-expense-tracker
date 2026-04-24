@@ -1,5 +1,11 @@
 import { useLayoutEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
@@ -12,14 +18,17 @@ import { EventExpenseList } from "@/features/expenses/components/event-expense-l
 import { useEventDetail } from "@/features/events/hooks/use-event-detail";
 
 export function EventDetailScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, "EventDetail">>();
+  const navigation =
+    useNavigation<
+      NativeStackNavigationProp<RootStackParamList, "EventDetail">
+    >();
   const route = useRoute<RouteProp<RootStackParamList, "EventDetail">>();
   const { eventId } = route.params;
 
   const { error: dbError, isInitializing, isReady } = useDatabase();
   const { event, expenses, error, isLoading, addExpense } = useEventDetail(
     eventId,
-    isReady && !dbError
+    isReady && !dbError,
   );
   const [isSavingExpense, setIsSavingExpense] = useState(false);
 
@@ -29,7 +38,11 @@ export function EventDetailScreen() {
     });
   }, [event?.name, navigation]);
 
-  const handleAddExpense = async (input: { payerName: string; amount: number; description: string }) => {
+  const handleAddExpense = async (input: {
+    payerName: string;
+    amount: number;
+    description: string;
+  }) => {
     setIsSavingExpense(true);
     try {
       await addExpense(input);
@@ -39,7 +52,10 @@ export function EventDetailScreen() {
   };
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} style={{ flex: 1, backgroundColor: "#fafafa" }}>
+    <SafeAreaView
+      edges={["bottom", "left", "right"]}
+      style={{ flex: 1, backgroundColor: "#fafafa" }}
+    >
       <ScrollView
         style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}
         contentContainerStyle={{ paddingBottom: 32 }}
@@ -68,11 +84,23 @@ export function EventDetailScreen() {
               <Text className="mb-4 text-zinc-600">{event.description}</Text>
             ) : null}
 
-            <Text className="mb-2 text-lg font-semibold text-zinc-900">Expenses</Text>
+            <Text className="mb-2 text-lg font-semibold text-zinc-900">
+              Expenses
+            </Text>
             <EventExpenseList expenses={expenses} />
 
+            <Pressable
+              onPress={() => navigation.navigate("Settlement", { eventId })}
+              className="mt-4 items-center rounded-xl bg-zinc-900 py-3"
+            >
+              <Text className="font-semibold text-white">View Settlement</Text>
+            </Pressable>
+
             <View className="mt-6">
-              <AddExpenseForm isSaving={isSavingExpense} onSubmit={handleAddExpense} />
+              <AddExpenseForm
+                isSaving={isSavingExpense}
+                onSubmit={handleAddExpense}
+              />
             </View>
           </>
         ) : null}
