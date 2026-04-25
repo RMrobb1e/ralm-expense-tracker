@@ -1,9 +1,11 @@
 import { useLayoutEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -16,6 +18,7 @@ import { useDatabase } from "@/db/hooks/use-database";
 import { AddExpenseForm } from "@/features/expenses/components/add-expense-form";
 import { EventExpenseList } from "@/features/expenses/components/event-expense-list";
 import { useEventDetail } from "@/features/events/hooks/use-event-detail";
+import { addParticipantToEvent, removeParticipantFromEvent } from "@/db/client";
 
 export function EventDetailScreen() {
   const navigation =
@@ -26,11 +29,17 @@ export function EventDetailScreen() {
   const { eventId } = route.params;
 
   const { error: dbError, isInitializing, isReady } = useDatabase();
-  const { event, expenses, error, isLoading, addExpense } = useEventDetail(
-    eventId,
-    isReady && !dbError,
-  );
+  const {
+    event,
+    expenses,
+    participants,
+    error,
+    isLoading,
+    addExpense,
+    refresh,
+  } = useEventDetail(eventId, isReady && !dbError);
   const [isSavingExpense, setIsSavingExpense] = useState(false);
+  const [newParticipantName, setNewParticipantName] = useState("");
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -49,6 +58,48 @@ export function EventDetailScreen() {
     } finally {
       setIsSavingExpense(false);
     }
+  };
+
+  const handleAddParticipant = async () => {
+    if (!newParticipantName.trim()) {
+      Alert.alert("Error", "Please enter a participant name");
+      return;
+    }
+
+    try {
+      await addParticipantToEvent(eventId, newParticipantName);
+      setNewParticipantName("");
+      await refresh(); // Refresh the event data to include the new participant
+    } catch (err) {
+      Alert.alert("Error", "Failed to add participant");
+      console.error("Failed to add participant:", err);
+    }
+  };
+
+  const handleRemoveParticipant = async (
+    participantId: string,
+    participantName: string,
+  ) => {
+    Alert.alert(
+      "Remove Participant",
+      `Are you sure you want to remove ${participantName} from this event?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await removeParticipantFromEvent(participantId);
+              await refresh(); // Refresh the event data to reflect the removal
+            } catch (err) {
+              Alert.alert("Error", "Failed to remove participant");
+              console.error("Failed to remove participant:", err);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -83,6 +134,55 @@ export function EventDetailScreen() {
             {event.description ? (
               <Text className="mb-4 text-zinc-600">{event.description}</Text>
             ) : null}
+
+            {/* Participants Section */}
+            <Text className="mb-2 text-lg font-semibold text-zinc-900">
+              Participants
+            </Text>
+            <View className="mb-6 rounded-xl bg-white p-4 shadow-sm">
+              {participants.length > 0 ? (
+                <View className="mb-4">
+                  {participants.map((participant) => (
+                    <View
+                      key={participant.id}
+                      className="flex-row items-center justify-between py-2"
+                    >
+                      <Text className="text-zinc-900">{participant.name}</Text>
+                      <Pressable
+                        onPress={() =>
+                          handleRemoveParticipant(
+                            participant.id,
+                            participant.name,
+                          )
+                        }
+                        className="rounded-full bg-red-100 px-3 py-1"
+                      >
+                        <Text className="text-sm font-medium text-red-700">
+                          Remove
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text className="py-2 text-zinc-500">No participants yet</Text>
+              )}
+
+              <View className="flex-row items-center">
+                <TextInput
+                  className="flex-1 rounded-lg border border-zinc-300 p-3"
+                  placeholder="Add participant..."
+                  value={newParticipantName}
+                  onChangeText={setNewParticipantName}
+                />
+                <Pressable
+                  onPress={handleAddParticipant}
+                  className="ml-2 rounded-lg bg-zinc-900 px-4 py-3"
+                >
+                  <Text className="font-medium text-white">Add</Text>
+                </Pressable>
+              </View>
+            </View>
 
             <Text className="mb-2 text-lg font-semibold text-zinc-900">
               Expenses

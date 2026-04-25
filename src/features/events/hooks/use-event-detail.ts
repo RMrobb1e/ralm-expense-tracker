@@ -4,36 +4,49 @@ import {
   addExpenseToEvent,
   getEventById,
   listExpensesForEvent,
+  listParticipantsForEvent,
 } from "@/db/client";
-import type { AddExpenseFormInput, EventExpenseListItem } from "@/features/expenses/types/event-expense.types";
+import type {
+  AddExpenseFormInput,
+  EventExpenseListItem,
+} from "@/features/expenses/types/event-expense.types";
 import type { EventItem } from "@/features/events/types/event.types";
+import type { Participant } from "@/db/types";
 
 type UseEventDetailResult = {
   event: EventItem | null;
   expenses: EventExpenseListItem[];
+  participants: Participant[];
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
   addExpense: (input: AddExpenseFormInput) => Promise<void>;
 };
 
-export function useEventDetail(eventId: string, enabled: boolean): UseEventDetailResult {
+export function useEventDetail(
+  eventId: string,
+  enabled: boolean,
+): UseEventDetailResult {
   const [event, setEvent] = useState<EventItem | null>(null);
   const [expenses, setExpenses] = useState<EventExpenseListItem[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       setError(null);
-      const [eventRow, expenseRows] = await Promise.all([
+      const [eventRow, expenseRows, participantRows] = await Promise.all([
         getEventById(eventId),
         listExpensesForEvent(eventId),
+        listParticipantsForEvent(eventId),
       ]);
       setEvent(eventRow);
       setExpenses(expenseRows);
+      setParticipants(participantRows);
     } catch (loadError: unknown) {
-      const message = loadError instanceof Error ? loadError.message : "Failed to load event";
+      const message =
+        loadError instanceof Error ? loadError.message : "Failed to load event";
       setError(message);
     } finally {
       setIsLoading(false);
@@ -50,7 +63,7 @@ export function useEventDetail(eventId: string, enabled: boolean): UseEventDetai
       });
       await refresh();
     },
-    [eventId, refresh]
+    [eventId, refresh],
   );
 
   useEffect(() => {
@@ -65,6 +78,7 @@ export function useEventDetail(eventId: string, enabled: boolean): UseEventDetai
   return {
     event,
     expenses,
+    participants,
     isLoading,
     error,
     refresh,

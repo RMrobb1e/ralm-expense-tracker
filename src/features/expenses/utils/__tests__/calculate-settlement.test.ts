@@ -153,4 +153,89 @@ describe("calculateSettlement", () => {
     // Simplified should recognize that net balances are all 0, so no transactions are needed
     expect(result.simplified).toEqual([]);
   });
+
+  it("should handle dynamic participants (adding participants)", () => {
+    // Initial scenario with 3 participants
+    const initialUsers: SettlementUser[] = [
+      { id: "A", name: "Alice" },
+      { id: "B", name: "Bob" },
+      { id: "C", name: "Charlie" },
+    ];
+
+    const initialExpenses: SettlementExpense[] = [
+      { id: "1", payerId: "A", amount: 30 }, // Split among A, B, C (₱10 each)
+    ];
+
+    // Add a new participant (D)
+    const updatedUsers: SettlementUser[] = [
+      ...initialUsers,
+      { id: "D", name: "David" },
+    ];
+
+    // Add a new expense with the new participant
+    const updatedExpenses: SettlementExpense[] = [
+      ...initialExpenses,
+      { id: "2", payerId: "D", amount: 40 }, // Split among A, B, C, D (₱10 each)
+    ];
+
+    const updatedResult = calculateSettlement(updatedExpenses, updatedUsers);
+
+    // Check that the new participant is properly handled
+    // The first expense (₱30) is split among A, B, C, D (₱7.50 each)
+    // The second expense (₱40) is split among A, B, C, D (₱10 each)
+    // So B owes A ₱7.50 and C owes A ₱7.50
+    // And A owes D ₱10, B owes D ₱10, C owes D ₱10
+    expect(updatedResult.traditional).toEqual(
+      expect.arrayContaining([
+        { from: "B", to: "A", amount: 7.5 },
+        { from: "C", to: "A", amount: 7.5 },
+        { from: "A", to: "D", amount: 10 },
+        { from: "B", to: "D", amount: 10 },
+        { from: "C", to: "D", amount: 10 },
+      ]),
+    );
+  });
+
+  it("should handle dynamic participants (removing participants)", () => {
+    // Scenario with 4 participants
+    const initialUsers: SettlementUser[] = [
+      { id: "A", name: "Alice" },
+      { id: "B", name: "Bob" },
+      { id: "C", name: "Charlie" },
+      { id: "D", name: "David" },
+    ];
+
+    // Update expenses to not include the removed participant
+    const updatedExpenses: SettlementExpense[] = [
+      {
+        id: "1",
+        payerId: "A",
+        amount: 40,
+        splitAmong: ["A", "B", "C"], // Explicitly split among remaining participants
+      },
+    ];
+
+    const updatedUsers: SettlementUser[] = [
+      { id: "A", name: "Alice" },
+      { id: "B", name: "Bob" },
+      { id: "C", name: "Charlie" },
+    ];
+
+    const updatedResult = calculateSettlement(updatedExpenses, updatedUsers);
+
+    // Check that the removed participant is properly handled
+    // ₱40 split among A, B, C (₱13.33, ₱13.33, ₱13.34)
+    expect(updatedResult.traditional).toEqual(
+      expect.arrayContaining([
+        { from: "B", to: "A", amount: 13.33 },
+        { from: "C", to: "A", amount: 13.33 },
+      ]),
+    );
+
+    // Charlie's share should be ₱13.34 due to rounding
+    const charliePayment = updatedResult.traditional.find(
+      (t) => t.from === "C" && t.to === "A",
+    );
+    expect(charliePayment?.amount).toBeCloseTo(13.33, 2);
+  });
 });

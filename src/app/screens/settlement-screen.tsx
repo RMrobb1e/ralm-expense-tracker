@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -15,16 +15,75 @@ import type { RootStackParamList } from "@/app/navigation/types";
 import { useDatabase } from "@/db/hooks/use-database";
 import { useSettlement } from "@/features/expenses/hooks/use-settlement";
 import type { Balance } from "@/features/expenses/utils/calculate-settlement";
-
-type SettlementView = "simplified" | "traditional";
+import { useSettlementView } from "./use-settlement-view";
 
 export function SettlementScreen() {
-  const navigation =
-    useNavigation<
-      NativeStackNavigationProp<RootStackParamList, "Settlement">
-    >();
-  const route = useRoute<RouteProp<RootStackParamList, "Settlement">>();
-  const { eventId } = route.params;
+  // Validate navigation context
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  // Add comprehensive defensive programming for route params
+  if (!route) {
+    console.error("Invalid route object:", route);
+    return (
+      <SafeAreaView
+        edges={["bottom", "left", "right"]}
+        style={{ flex: 1, backgroundColor: "#fafafa" }}
+      >
+        <View className="flex-1 items-center justify-center p-4">
+          <Text className="text-red-500 text-lg font-bold mb-2">
+            Navigation Error
+          </Text>
+          <Text className="text-zinc-600 text-center mb-4">
+            Invalid navigation route object. Please go back and try again.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Type guard for route params
+  const routeParams = route.params as { eventId?: string } | undefined;
+  if (!routeParams) {
+    console.error("Missing route params:", route);
+    return (
+      <SafeAreaView
+        edges={["bottom", "left", "right"]}
+        style={{ flex: 1, backgroundColor: "#fafafa" }}
+      >
+        <View className="flex-1 items-center justify-center p-4">
+          <Text className="text-red-500 text-lg font-bold mb-2">
+            Navigation Error
+          </Text>
+          <Text className="text-zinc-600 text-center mb-4">
+            Missing navigation parameters. Please go back and try again.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!routeParams.eventId) {
+    console.error("Missing eventId in route params:", routeParams);
+    return (
+      <SafeAreaView
+        edges={["bottom", "left", "right"]}
+        style={{ flex: 1, backgroundColor: "#fafafa" }}
+      >
+        <View className="flex-1 items-center justify-center p-4">
+          <Text className="text-red-500 text-lg font-bold mb-2">
+            Missing Event ID
+          </Text>
+          <Text className="text-zinc-600 text-center mb-4">
+            Event ID is required for Settlement screen. Please go back and try
+            again.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const { eventId } = routeParams;
 
   const { error: dbError, isReady } = useDatabase();
   const { settlement, participants, isLoading, error } = useSettlement(
@@ -32,10 +91,27 @@ export function SettlementScreen() {
     isReady && !dbError,
   );
 
-  const [view, setView] = useState<SettlementView>("simplified");
+  const { view, setView } = useSettlementView();
 
-  const balances =
-    view === "simplified" ? settlement?.simplified : settlement?.traditional;
+  // Monitor navigation state changes
+  useEffect(() => {
+    if (__DEV__) {
+      console.log("Navigation state updated, current view:", view);
+      console.log("Settlement data:", {
+        hasSettlement: !!settlement,
+        simplifiedCount: settlement?.simplified?.length || 0,
+        traditionalCount: settlement?.traditional?.length || 0,
+        participantsCount: participants?.length || 0,
+      });
+    }
+  }, [navigation, view, settlement, participants]);
+
+  // Ensure we have valid settlement data before accessing balances
+  const balances = settlement
+    ? view === "simplified"
+      ? settlement.simplified
+      : settlement.traditional
+    : undefined;
 
   // Build a name lookup map
   const nameById = new Map(participants.map((p) => [p.id, p.name]));
@@ -131,6 +207,17 @@ export function SettlementScreen() {
         </View>
       );
     }
+  } else if (!isLoading && settlement && !balances) {
+    // Handle case where balances might be undefined
+    balanceContent = (
+      <View className="p-6 mt-2 bg-white border border-dashed rounded-xl border-zinc-300">
+        <Text className="text-center text-zinc-500">
+          {settlement === null
+            ? "Add participants and expenses to see settlements."
+            : "Unable to display balances for this view."}
+        </Text>
+      </View>
+    );
   }
 
   return (
@@ -139,6 +226,7 @@ export function SettlementScreen() {
       style={{ flex: 1, backgroundColor: "#fafafa" }}
     >
       <ScrollView
+        key={`settlement-scroll-${view}`} // Add key to force re-render when view changes
         style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}
         contentContainerStyle={{ paddingBottom: 32 }}
       >
@@ -192,12 +280,30 @@ export function SettlementScreen() {
         {/* Error */}
         {error || dbError ? (
           <View className="p-3 bg-red-100 rounded-xl">
-            <Text className="text-red-700">{error ?? dbError}</Text>
+            <Text className="text-red-700">
+              {error ?? dbError ?? "An unknown error occurred"}
+            </Text>
+            {__DEV__ && (
+              <Text className="mt-1 text-xs text-red-500">
+                Check console logs for more details
+              </Text>
+            )}
           </View>
         ) : null}
 
         {/* Balance cards */}
         {balanceContent}
+
+        {/* Additional debugging info in dev mode */}
+        {__DEV__ && !isLoading && !error && !dbError && (
+          <View className="mt-4 p-3 bg-blue-50 rounded-xl">
+            <Text className="text-xs text-blue-700">
+              Debug: View={view}, HasSettlement={!!settlement}, Simplified=
+              {settlement?.simplified?.length || 0}, Traditional=
+              {settlement?.traditional?.length || 0}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

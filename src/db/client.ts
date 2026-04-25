@@ -348,3 +348,25 @@ export async function addExpenseToEvent(
     [expenseId, input.eventId, participantId, title, input.amount, now, now],
   );
 }
+
+export async function addParticipantToEvent(
+  eventId: string,
+  participantName: string,
+): Promise<void> {
+  const db = await getDatabase();
+  const id = `prt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const now = new Date().toISOString();
+
+  await db.runAsync(
+    `INSERT INTO participants (id, event_id, name, email, created_at)
+     VALUES (?, ?, ?, NULL, ?);`,
+    [id, eventId, participantName.trim(), now],
+  );
+}
+
+export async function removeParticipantFromEvent(
+  participantId: string,
+): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync("DELETE FROM participants WHERE id = ?;", [participantId]);
+}
